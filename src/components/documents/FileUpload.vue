@@ -21,7 +21,7 @@ const allowedTypes = [
   'text/csv'
 ]
 
-const maxSize = 10 * 1024 * 1024 // 10MB
+const maxSize = 200 * 1024 * 1024 // 10MB
 
 const handleDragOver = (e: DragEvent) => {
   e.preventDefault()
@@ -107,7 +107,7 @@ defineExpose({
         
         <div class="text-xs text-gray-500 space-y-1">
           <p>Supported formats: PDF, DOCX, TXT, MD, CSV</p>
-          <p>Maximum file size: 10MB</p>
+          <p>Maximum file size: 200MB</p>
         </div>
       </div>
     </div>

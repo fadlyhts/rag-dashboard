@@ -84,6 +84,7 @@ const handleUpload = async () => {
       try {
         await api.post(`/api/documents/upload?${params.toString()}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 600000, // 10 minutes for large file uploads
           onUploadProgress: (progressEvent: any) => {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
             // Update progress

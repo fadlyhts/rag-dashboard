@@ -48,16 +48,26 @@ export const documentApi = {
   async upload(
     file: File, 
     title?: string, 
-    contentType: string = 'document'
+    contentType: string = 'document',
+    categoryId?: number,
+    onProgress?: (progress: number) => void
   ): Promise<UploadResult> {
     const formData = new FormData()
     formData.append('file', file)
     if (title) formData.append('title', title)
     formData.append('content_type', contentType)
+    if (categoryId) formData.append('category_id', categoryId.toString())
     
     const { data } = await api.post('/api/documents/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
+      },
+      timeout: 600000, // 10 minutes for large file uploads
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+          onProgress(progress)
+        }
       }
     })
     return data

@@ -45,6 +45,7 @@ export const documentsService = {
       headers: {
         'Content-Type': 'multipart/form-data'
       },
+      timeout: 600000, // 10 minutes for large file uploads
       onUploadProgress
     })
   },
