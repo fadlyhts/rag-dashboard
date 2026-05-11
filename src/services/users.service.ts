@@ -8,18 +8,11 @@ import type {
 
 export const usersService = {
   async list(params: UsersListParams = {}): Promise<UsersListResponse> {
-    // Backend doesn't have this endpoint yet, return empty data
-    return {
-      success: true,
-      users: [],
-      total: 0,
-      page: params.page || 1,
-      limit: params.limit || 20
-    }
+    const { data } = await api.get('/api/users', { params })
+    return data
   },
 
   async getById(id: string): Promise<UserDetailResponse> {
-    // Backend doesn't have this endpoint yet
     const { data } = await api.get(`/api/users/${id}`)
     return data
   },

@@ -224,6 +224,7 @@ const chunks = computed(() => documentStore.chunks)
             :file-url="`/api/documents/${document.id}/download`"
             :file-type="document.file_type"
             :title="document.title"
+            :document-id="document.id"
           />
         </TabsContent>
         
