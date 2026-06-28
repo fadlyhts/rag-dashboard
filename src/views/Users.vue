@@ -6,6 +6,7 @@ import { usersService } from '@/services/users.service'
 import type { WhatsAppUser, UserDetail, UsersListParams } from '@/types/user.types'
 import { format } from 'date-fns'
 import { Users as UsersIcon, Download, Eye, Ban, Check } from 'lucide-vue-next'
+import api from '@/services/api'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +32,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 import SearchInput from '@/components/shared/SearchInput.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
@@ -56,9 +66,30 @@ const pageSize = ref(20)
 
 const blockingUsers = ref<Set<string>>(new Set())
 
+const divisions = ref<any[]>([])
+const savingDivision = ref(false)
+
+const addDialogOpen = ref(false)
+const addingUser = ref(false)
+const newUser = ref({
+  phone_number: '',
+  whatsapp_name: '',
+  division_id: null as number | null
+})
+
 onMounted(() => {
   loadUsers()
+  loadDivisions()
 })
+
+const loadDivisions = async () => {
+  try {
+    const { data } = await api.get('/api/documents/divisions')
+    divisions.value = data
+  } catch (error) {
+    console.error('Failed to load divisions:', error)
+  }
+}
 
 const loadUsers = async () => {
   loading.value = true
@@ -143,6 +174,28 @@ const saveNotes = async () => {
   }
 }
 
+const updateDivision = async (divisionId: number | null) => {
+  if (!selectedUser.value) return
+
+  savingDivision.value = true
+  try {
+    await usersService.updateDivision(selectedUser.value.id, divisionId)
+    toast.success('Division updated successfully')
+    if (selectedUser.value) {
+      selectedUser.value.division_id = divisionId
+    }
+    // Update in the users list
+    const userIndex = users.value.findIndex(u => u.id === selectedUser.value?.id)
+    if (userIndex !== -1) {
+      users.value[userIndex].division_id = divisionId
+    }
+  } catch (error: any) {
+    toast.error(error.response?.data?.message || 'Failed to update division')
+  } finally {
+    savingDivision.value = false
+  }
+}
+
 const viewConversations = (phone: string) => {
   router.push({ name: 'conversations', query: { search: phone } })
 }
@@ -178,6 +231,30 @@ const getStatusBadge = (status: string) => {
     ? 'bg-green-100 text-green-800'
     : 'bg-red-100 text-red-800'
 }
+
+const handleAddUser = async () => {
+  if (!newUser.value.phone_number) {
+    toast.error('Phone number is required')
+    return
+  }
+
+  addingUser.value = true
+  try {
+    await usersService.createUser(newUser.value)
+    toast.success('User added successfully')
+    addDialogOpen.value = false
+    newUser.value = {
+      phone_number: '',
+      whatsapp_name: '',
+      division_id: null
+    }
+    loadUsers()
+  } catch (error: any) {
+    toast.error(error.response?.data?.detail || 'Failed to add user')
+  } finally {
+    addingUser.value = false
+  }
+}
 </script>
 
 <template>
@@ -188,7 +265,11 @@ const getStatusBadge = (status: string) => {
         <h1 class="text-3xl font-bold text-gray-900">Users Management</h1>
         <p class="text-gray-500 mt-1">Manage WhatsApp users and their access</p>
       </div>
-      <DropdownMenu>
+      <div class="flex items-center gap-3">
+        <Button @click="addDialogOpen = true" class="bg-[#128C7E] hover:bg-[#075E54]">
+          + Add User
+        </Button>
+        <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <Button variant="outline">
             <Download class="w-4 h-4 mr-2" />
@@ -204,6 +285,7 @@ const getStatusBadge = (status: string) => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </div>
 
     <!-- Filters -->
@@ -294,14 +376,16 @@ const getStatusBadge = (status: string) => {
             </TableCell>
             <TableCell>
               <div class="flex items-center gap-2">
-                <Switch
-                  :checked="user.status === 'active'"
-                  @update:checked="() => toggleBlockUser(user)"
-                  :disabled="blockingUsers.has(user.id)"
-                />
-                <span class="text-sm text-gray-600">
-                  {{ user.status === 'active' ? 'Active' : 'Blocked' }}
-                </span>
+                <Button
+                  size="sm"
+                  :variant="user.status === 'active' ? 'outline' : 'default'"
+                  :disabled="blockingUsers.has(String(user.id))"
+                  @click="toggleBlockUser(user)"
+                >
+                  <Ban v-if="user.status === 'active'" class="w-4 h-4 mr-1" />
+                  <Check v-else class="w-4 h-4 mr-1" />
+                  {{ user.status === 'active' ? 'Block' : 'Unblock' }}
+                </Button>
               </div>
             </TableCell>
             <TableCell class="text-right">
@@ -333,7 +417,67 @@ const getStatusBadge = (status: string) => {
       v-model:notes="userNotes"
       :user="selectedUser"
       :saving-notes="savingNotes"
+      :divisions="divisions"
+      :saving-division="savingDivision"
       @save-notes="saveNotes"
+      @update:division="updateDivision"
     />
+
+    <!-- Add User Dialog -->
+    <Dialog v-model:open="addDialogOpen">
+      <DialogContent class="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Add New User</DialogTitle>
+        </DialogHeader>
+        <div class="grid gap-4 py-4">
+          <div class="grid gap-2">
+            <Label for="phone">Phone Number <span class="text-red-500">*</span></Label>
+            <Input
+              id="phone"
+              v-model="newUser.phone_number"
+              placeholder="e.g. 628123456789"
+              @keyup.enter="handleAddUser"
+            />
+            <p class="text-xs text-gray-500">Include country code without + or spaces</p>
+          </div>
+          <div class="grid gap-2">
+            <Label for="name">Name (Optional)</Label>
+            <Input
+              id="name"
+              v-model="newUser.whatsapp_name"
+              placeholder="WhatsApp Name"
+              @keyup.enter="handleAddUser"
+            />
+          </div>
+          <div class="grid gap-2">
+            <Label>Division (Optional)</Label>
+            <Select v-model="newUser.division_id">
+              <SelectTrigger>
+                <SelectValue placeholder="Select division" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem :value="null">None</SelectItem>
+                <SelectItem 
+                  v-for="div in divisions" 
+                  :key="div.id" 
+                  :value="div.id"
+                >
+                  {{ div.name }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="addDialogOpen = false" :disabled="addingUser">
+            Cancel
+          </Button>
+          <Button @click="handleAddUser" :disabled="addingUser || !newUser.phone_number">
+            <span v-if="addingUser" class="mr-2">Adding...</span>
+            <span v-else>Add User</span>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

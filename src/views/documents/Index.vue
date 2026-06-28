@@ -21,26 +21,48 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Label } from '@/components/ui/label'
+import DeleteConfirmDialog from '@/components/shared/DeleteConfirmDialog.vue'
 import DocumentTable from '@/components/documents/DocumentTable.vue'
+import { documentsService } from '@/services/documents.service'
+import { useAuthStore } from '@/stores/auth'
+import { computed } from 'vue'
 
 const router = useRouter()
 const documentStore = useDocumentStore()
+const authStore = useAuthStore()
+
+const isSuperAdmin = computed(() => authStore.user?.role === 'super_admin')
 
 const searchQuery = ref('')
 const statusFilter = ref('all')
+const categoryFilter = ref('all')
+const divisionFilter = ref('all')
 const deleteDialogOpen = ref(false)
 const documentToDelete = ref<number | null>(null)
 const deleting = ref(false)
-
-onMounted(() => {
-  loadDocuments()
-})
 
 const loadDocuments = async () => {
   try {
     await documentStore.fetchDocuments({
       search: searchQuery.value || undefined,
-      status: statusFilter.value !== 'all' ? statusFilter.value : undefined
+      status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
+      category: categoryFilter.value !== 'all' ? Number(categoryFilter.value) : undefined,
+      division: divisionFilter.value !== 'all' ? Number(divisionFilter.value) : undefined
     })
   } catch (error) {
     toast.error('Failed to load documents')
@@ -51,8 +73,10 @@ const handleSearch = () => {
   loadDocuments()
 }
 
-const handleFilterChange = (value: string) => {
-  statusFilter.value = value
+const handleFilterChange = (filter: string, value: string) => {
+  if (filter === 'status') statusFilter.value = value
+  if (filter === 'category') categoryFilter.value = value
+  if (filter === 'division') divisionFilter.value = value
   loadDocuments()
 }
 
@@ -93,6 +117,110 @@ const handleDelete = async () => {
 const handleUpload = () => {
   router.push({ name: 'documents-upload' })
 }
+
+// Category CRUD State
+const categories = ref<any[]>([])
+const loadingCategories = ref(false)
+const categoryDialogOpen = ref(false)
+const savingCategory = ref(false)
+const isEditingCategory = ref(false)
+const currentCategory = ref({ id: 0, name: '', description: '' })
+const deleteCategoryDialogOpen = ref(false)
+const categoryToDelete = ref<number | null>(null)
+
+const loadCategories = async () => {
+  loadingCategories.value = true
+  try {
+    const { data } = await documentsService.getCategories()
+    categories.value = data
+  } catch (error) {
+    toast.error('Failed to load categories')
+  } finally {
+    loadingCategories.value = false
+  }
+}
+
+const divisions = ref<any[]>([])
+const loadDivisions = async () => {
+  try {
+    const { data } = await documentsService.getDivisions()
+    divisions.value = data
+  } catch (error) {
+    console.error('Failed to load divisions:', error)
+  }
+}
+
+const handleAddCategory = () => {
+  isEditingCategory.value = false
+  currentCategory.value = { id: 0, name: '', description: '' }
+  categoryDialogOpen.value = true
+}
+
+const handleEditCategory = (cat: any) => {
+  isEditingCategory.value = true
+  currentCategory.value = { ...cat }
+  categoryDialogOpen.value = true
+}
+
+const saveCategory = async () => {
+  if (!currentCategory.value.name) return toast.error('Name is required')
+  
+  savingCategory.value = true
+  try {
+    if (isEditingCategory.value) {
+      await documentsService.updateCategory(currentCategory.value.id, {
+        name: currentCategory.value.name,
+        description: currentCategory.value.description
+      })
+      toast.success('Category updated')
+    } else {
+      await documentsService.createCategory({
+        name: currentCategory.value.name,
+        description: currentCategory.value.description
+      })
+      toast.success('Category created')
+    }
+    categoryDialogOpen.value = false
+    loadCategories()
+  } catch (error: any) {
+    toast.error(error.response?.data?.detail || 'Failed to save category')
+  } finally {
+    savingCategory.value = false
+  }
+}
+
+const confirmDeleteCategory = (id: number) => {
+  categoryToDelete.value = id
+  const cat = categories.value.find(c => c.id === id)
+  if (cat) {
+    currentCategory.value = { ...cat }
+  }
+  deleteCategoryDialogOpen.value = true
+}
+
+const handleDeleteCategory = async () => {
+  if (!categoryToDelete.value) return
+  
+  deleting.value = true
+  try {
+    await documentsService.deleteCategory(categoryToDelete.value)
+    toast.success('Category deleted')
+    deleteCategoryDialogOpen.value = false
+    loadCategories()
+  } catch (error) {
+    toast.error('Failed to delete category')
+  } finally {
+    deleting.value = false
+  }
+}
+
+onMounted(() => {
+  loadDocuments()
+  loadCategories()
+  if (isSuperAdmin.value) {
+    loadDivisions()
+  }
+})
 </script>
 
 <template>
@@ -100,14 +228,30 @@ const handleUpload = () => {
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Documents</h1>
-        <p class="text-gray-500 mt-1">Manage your document library</p>
+        <h1 class="text-3xl font-bold text-gray-900">
+          {{ isSuperAdmin ? 'Documents & Categories' : 'Documents' }}
+        </h1>
+        <p class="text-gray-500 mt-1">
+          {{ isSuperAdmin ? 'Manage your document library and categories' : 'Manage your document library' }}
+        </p>
       </div>
-      <Button @click="handleUpload" class="bg-[#25D366] hover:bg-[#1fb855]">
-        <Plus class="w-4 h-4 mr-2" />
-        Upload Document
-      </Button>
     </div>
+    
+    <Tabs defaultValue="documents" class="space-y-6">
+      <TabsList v-if="isSuperAdmin">
+        <TabsTrigger value="documents">Documents</TabsTrigger>
+        <TabsTrigger v-if="isSuperAdmin" value="categories">Categories</TabsTrigger>
+      </TabsList>
+      
+      <!-- DOCUMENTS TAB -->
+      <TabsContent value="documents" class="space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-bold">Document List</h2>
+          <Button @click="handleUpload" class="bg-[#128C7E] hover:bg-[#075E54] text-white">
+            <Plus class="w-4 h-4 mr-2" />
+            Upload Document
+          </Button>
+        </div>
     
     <!-- Filters -->
     <div class="flex items-center gap-4">
@@ -121,7 +265,7 @@ const handleUpload = () => {
         />
       </div>
       
-      <Select :model-value="statusFilter" @update:model-value="(val: any) => handleFilterChange(val)">
+      <Select :model-value="statusFilter" @update:model-value="(val: any) => handleFilterChange('status', val)">
         <SelectTrigger class="w-[180px]">
           <Filter class="w-4 h-4 mr-2" />
           <SelectValue placeholder="Filter by status" />
@@ -132,6 +276,32 @@ const handleUpload = () => {
           <SelectItem value="processing">Processing</SelectItem>
           <SelectItem value="completed">Completed</SelectItem>
           <SelectItem value="failed">Failed</SelectItem>
+        </SelectContent>
+      </Select>
+      
+      <Select v-if="isSuperAdmin" :model-value="divisionFilter" @update:model-value="(val: any) => handleFilterChange('division', val)">
+        <SelectTrigger class="w-[180px]">
+          <Filter class="w-4 h-4 mr-2" />
+          <SelectValue placeholder="Filter by division" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Divisions</SelectItem>
+          <SelectItem v-for="div in divisions" :key="div.id" :value="div.id.toString()">
+            {{ div.name }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+      
+      <Select v-if="isSuperAdmin" :model-value="categoryFilter" @update:model-value="(val: any) => handleFilterChange('category', val)">
+        <SelectTrigger class="w-[180px]">
+          <Filter class="w-4 h-4 mr-2" />
+          <SelectValue placeholder="Filter by category" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Categories</SelectItem>
+          <SelectItem v-for="cat in categories" :key="cat.id" :value="cat.id.toString()">
+            {{ cat.name }}
+          </SelectItem>
         </SelectContent>
       </Select>
       
@@ -167,7 +337,7 @@ const handleUpload = () => {
     </div>
     
     <!-- Documents Table -->
-    <div class="bg-white rounded-lg border border-gray-200">
+    <div class="bg-white rounded-lg border border-gray-200 min-h-[500px]">
       <DocumentTable
         :documents="documentStore.documents"
         :loading="documentStore.loading"
@@ -176,25 +346,90 @@ const handleUpload = () => {
         @delete="confirmDelete"
       />
     </div>
+    </TabsContent>
     
-    <!-- Delete Confirmation Dialog -->
-    <Dialog v-model:open="deleteDialogOpen">
+    <!-- CATEGORIES TAB -->
+    <TabsContent v-if="isSuperAdmin" value="categories" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold">Document Categories</h2>
+        <Button @click="handleAddCategory" class="bg-[#128C7E] hover:bg-[#075E54] text-white">
+          <Plus class="w-4 h-4 mr-2" /> Add Category
+        </Button>
+      </div>
+      
+      <div class="bg-white rounded-lg border border-gray-200 min-h-[500px]">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Category Name</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead class="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-if="categories.length === 0">
+              <TableCell colspan="3" class="text-center py-8 text-gray-500">
+                No categories found. Create one to organize documents.
+              </TableCell>
+            </TableRow>
+            <TableRow v-for="cat in categories" :key="cat.id">
+              <TableCell class="font-medium">{{ cat.name }}</TableCell>
+              <TableCell>{{ cat.description || '-' }}</TableCell>
+              <TableCell class="text-right">
+                <Button variant="ghost" size="sm" @click="handleEditCategory(cat)">
+                  Edit
+                </Button>
+                <Button variant="ghost" size="sm" class="text-red-500 hover:text-red-700" @click="confirmDeleteCategory(cat.id)">
+                  Delete
+                </Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    </TabsContent>
+  </Tabs>
+    
+    <DeleteConfirmDialog
+      v-model:open="deleteDialogOpen"
+      title="Delete Document"
+      :item-name="documentStore.documents?.find(d => d.id === documentToDelete)?.title"
+      :loading="deleting"
+      @confirm="handleDelete"
+    />
+
+    <!-- Category Form Dialog -->
+    <Dialog v-model:open="categoryDialogOpen">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Document</DialogTitle>
-          <DialogDescription>
-            Are you sure you want to delete this document? This action cannot be undone.
-          </DialogDescription>
+          <DialogTitle>{{ isEditingCategory ? 'Edit Category' : 'Add Category' }}</DialogTitle>
         </DialogHeader>
+        <div class="space-y-4 py-4">
+          <div class="space-y-2">
+            <Label for="cat-name">Category Name <span class="text-red-500">*</span></Label>
+            <Input id="cat-name" v-model="currentCategory.name" placeholder="e.g. SOP" />
+          </div>
+          <div class="space-y-2">
+            <Label for="cat-desc">Description</Label>
+            <Input id="cat-desc" v-model="currentCategory.description" placeholder="Optional description" />
+          </div>
+        </div>
         <DialogFooter>
-          <Button variant="outline" @click="deleteDialogOpen = false" :disabled="deleting">
-            Cancel
-          </Button>
-          <Button variant="destructive" @click="handleDelete" :disabled="deleting">
-            {{ deleting ? 'Deleting...' : 'Delete' }}
+          <Button variant="outline" @click="categoryDialogOpen = false" :disabled="savingCategory">Cancel</Button>
+          <Button @click="saveCategory" :disabled="savingCategory || !currentCategory.name">
+            {{ savingCategory ? 'Saving...' : 'Save Category' }}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <DeleteConfirmDialog
+      v-model:open="deleteCategoryDialogOpen"
+      title="Delete Category"
+      :item-name="currentCategory.name"
+      description="Associated documents will not be deleted but will lose their category association."
+      :loading="deleting"
+      @confirm="handleDeleteCategory"
+    />
   </div>
 </template>
