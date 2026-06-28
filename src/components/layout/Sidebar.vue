@@ -1,19 +1,31 @@
 <script setup lang="ts">
 import { RouterLink, useRoute } from 'vue-router'
-import { Home, FileText, MessageSquare, Users, Database, Settings, BarChart, Wrench } from 'lucide-vue-next'
+import { Home, FileText, MessageSquare, Users, Database, Settings, BarChart, Wrench, ShieldCheck } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth'
+import { computed } from 'vue'
 
 const route = useRoute()
+const authStore = useAuthStore()
+const isSuperAdmin = computed(() => authStore.user?.role === 'super_admin')
 
 const navigationItems = [
   { name: 'Dashboard', path: '/', icon: Home },
   { name: 'Documents', path: '/documents', icon: FileText },
   { name: 'Conversations', path: '/conversations', icon: MessageSquare },
   { name: 'Users', path: '/users', icon: Users },
+  { name: 'Staff Management', path: '/admins', icon: ShieldCheck, requiresSuperAdmin: true },
   { name: 'Vector DB', path: '/vector-db', icon: Database },
   { name: 'RAG Config', path: '/rag-config', icon: Wrench },
   { name: 'Analytics', path: '/analytics', icon: BarChart },
   { name: 'Settings', path: '/settings', icon: Settings }
 ]
+
+const visibleNavigationItems = computed(() => {
+  if (isSuperAdmin.value) {
+    return navigationItems
+  }
+  return navigationItems.filter(item => item.path.startsWith('/documents'))
+})
 </script>
 
 <template>
@@ -32,7 +44,7 @@ const navigationItems = [
     <!-- Navigation -->
     <nav class="flex-1 overflow-y-auto p-4 space-y-1">
       <RouterLink
-        v-for="item in navigationItems"
+        v-for="item in visibleNavigationItems"
         :key="item.path"
         :to="item.path"
         class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors group"
