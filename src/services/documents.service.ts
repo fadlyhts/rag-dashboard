@@ -15,6 +15,8 @@ export const documentsService = {
   getAll: async (params?: { 
     search?: string
     status?: string
+    category?: number
+    division?: number
     page?: number
     limit?: number
   }): Promise<{ data: DocumentsListResponse }> => {
@@ -64,5 +66,25 @@ export const documentsService = {
   
   delete: (id: number): Promise<void> => {
     return api.delete(`/api/documents/${id}`)
+  },
+  
+  getCategories: (): Promise<{ data: any[] }> => {
+    return api.get('/api/documents/categories')
+  },
+  
+  getDivisions: (): Promise<{ data: any[] }> => {
+    return api.get('/api/documents/divisions')
+  },
+  
+  createCategory: (data: { name: string, description?: string }): Promise<{ data: any }> => {
+    return api.post('/api/documents/categories', data)
+  },
+  
+  updateCategory: (id: number, data: { name?: string, description?: string }): Promise<{ data: any }> => {
+    return api.put(`/api/documents/categories/${id}`, data)
+  },
+  
+  deleteCategory: (id: number): Promise<void> => {
+    return api.delete(`/api/documents/categories/${id}`)
   }
 }
