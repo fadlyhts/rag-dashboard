@@ -7,6 +7,7 @@ export interface WhatsAppUser {
   status: 'active' | 'blocked'
   created_at: string
   notes?: string
+  division_id?: number | null
 }
 
 export interface UserDetail extends WhatsAppUser {
