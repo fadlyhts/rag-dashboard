@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import { Eye, RotateCw, Trash2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -27,6 +28,9 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+
+const authStore = useAuthStore()
+const isSuperAdmin = computed(() => authStore.user?.role === 'super_admin')
 
 const formatFileSize = (bytes: number) => {
   if (bytes === 0) return '0 Bytes'
@@ -78,6 +82,8 @@ const getFileTypeColor = (fileType: string) => {
           <TableHead>Title</TableHead>
           <TableHead>Type</TableHead>
           <TableHead>Size</TableHead>
+          <TableHead v-if="isSuperAdmin">Division</TableHead>
+          <TableHead v-if="isSuperAdmin">Category</TableHead>
           <TableHead>Upload Date</TableHead>
           <TableHead>Status</TableHead>
           <TableHead class="text-right">Actions</TableHead>
@@ -89,6 +95,8 @@ const getFileTypeColor = (fileType: string) => {
             <TableCell><Skeleton class="h-4 w-[250px]" /></TableCell>
             <TableCell><Skeleton class="h-4 w-[60px]" /></TableCell>
             <TableCell><Skeleton class="h-4 w-[80px]" /></TableCell>
+            <TableCell v-if="isSuperAdmin"><Skeleton class="h-4 w-[100px]" /></TableCell>
+            <TableCell v-if="isSuperAdmin"><Skeleton class="h-4 w-[100px]" /></TableCell>
             <TableCell><Skeleton class="h-4 w-[100px]" /></TableCell>
             <TableCell><Skeleton class="h-4 w-[80px]" /></TableCell>
             <TableCell><Skeleton class="h-4 w-[120px]" /></TableCell>
@@ -97,7 +105,7 @@ const getFileTypeColor = (fileType: string) => {
         
         <template v-else-if="documents.length === 0">
           <TableRow>
-            <TableCell colspan="6" class="text-center py-8 text-gray-500">
+            <TableCell :colspan="isSuperAdmin ? 8 : 6" class="text-center py-8 text-gray-500">
               No documents found
             </TableCell>
           </TableRow>
@@ -112,6 +120,14 @@ const getFileTypeColor = (fileType: string) => {
               </Badge>
             </TableCell>
             <TableCell>{{ formatFileSize(doc.file_size) }}</TableCell>
+            <TableCell v-if="isSuperAdmin">
+              <span class="text-gray-600">{{ doc.division_name || '-' }}</span>
+            </TableCell>
+            <TableCell v-if="isSuperAdmin">
+              <Badge variant="outline" class="bg-gray-50 text-gray-700">
+                {{ doc.category_name || 'Uncategorized' }}
+              </Badge>
+            </TableCell>
             <TableCell>{{ formatDate(doc.upload_date) }}</TableCell>
             <TableCell>
               <Badge :variant="getStatusVariant(doc.status)">
