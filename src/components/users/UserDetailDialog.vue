@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { format } from 'date-fns'
 import type { UserDetail } from '@/types/user.types'
 import { User, MessageSquare, Clock, TrendingUp } from 'lucide-vue-next'
@@ -22,12 +22,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface Props {
   open: boolean
   user: UserDetail | null
   notes: string
   savingNotes: boolean
+  divisions: any[]
+  savingDivision?: boolean
 }
 
 const props = defineProps<Props>()
@@ -36,6 +45,7 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
   'update:notes': [value: string]
   'save-notes': []
+  'update:division': [value: number | null]
 }>()
 
 const formatDate = (date: string) => {
@@ -48,6 +58,18 @@ const getStatusBadge = computed(() => {
     ? 'bg-green-100 text-green-800'
     : 'bg-red-100 text-red-800'
 })
+
+const localDivisionId = ref<number | null>(null)
+
+watch(() => props.user, (newUser) => {
+  if (newUser) {
+    localDivisionId.value = newUser.division_id ?? null
+  }
+}, { immediate: true })
+
+const handleSaveDivision = () => {
+  emit('update:division', localDivisionId.value)
+}
 </script>
 
 <template>
@@ -149,6 +171,43 @@ const getStatusBadge = computed(() => {
                 </TableRow>
               </TableBody>
             </Table>
+          </Card>
+        </div>
+
+        <!-- Division Assignment Section -->
+        <div>
+          <h4 class="text-lg font-semibold text-gray-900 mb-3">Division Assignment</h4>
+          <Card class="p-4">
+            <div class="flex items-center gap-4">
+              <div class="flex-1">
+                <Select 
+                  :model-value="localDivisionId ? String(localDivisionId) : 'none'"
+                  @update:model-value="(val: any) => { localDivisionId = val === 'none' ? null : parseInt(val) }"
+                  :disabled="savingDivision"
+                >
+                  <SelectTrigger class="w-full">
+                    <SelectValue placeholder="Select division" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">General / No Division</SelectItem>
+                    <SelectItem 
+                      v-for="division in divisions" 
+                      :key="division.id" 
+                      :value="String(division.id)"
+                    >
+                      {{ division.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                @click="handleSaveDivision"
+                :disabled="savingDivision || (localDivisionId === (user.division_id ?? null))"
+                class="bg-[#25D366] hover:bg-[#1fb855] whitespace-nowrap"
+              >
+                {{ savingDivision ? 'Saving...' : 'Save Division' }}
+              </Button>
+            </div>
           </Card>
         </div>
 
