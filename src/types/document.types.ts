@@ -6,7 +6,10 @@ export interface Document {
   upload_date: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
   chunks_count?: number
-  category?: string
+  category_id?: number
+  category_name?: string
+  division_id?: number
+  division_name?: string
 }
 
 export interface DocumentChunk {
