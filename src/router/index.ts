@@ -65,6 +65,12 @@ const router = createRouter({
           meta: { title: 'Users' }
         },
         {
+          path: 'admins',
+          name: 'admins',
+          component: () => import('@/views/Admins.vue'),
+          meta: { title: 'Staff Management' }
+        },
+        {
           path: 'vector-db',
           name: 'vector-db',
           component: () => import('@/views/VectorDB.vue'),
@@ -110,7 +116,18 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth !== false && !authStore.isAuthenticated) {
     next({ name: 'login' })
   } else if (to.name === 'login' && authStore.isAuthenticated) {
-    next({ name: 'dashboard' })
+    if (authStore.user?.role !== 'super_admin') {
+      next({ name: 'documents' })
+    } else {
+      next({ name: 'dashboard' })
+    }
+  } else if (authStore.isAuthenticated && authStore.user?.role !== 'super_admin') {
+    // Admin PIC is only allowed to access /documents routes
+    if (!to.path.startsWith('/documents')) {
+      next({ name: 'documents' })
+    } else {
+      next()
+    }
   } else {
     next()
   }
