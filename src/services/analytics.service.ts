@@ -10,7 +10,17 @@ import type {
 export const analyticsService = {
   async getOverview(params: AnalyticsParams = {}): Promise<AnalyticsOverviewResponse> {
     const { data } = await api.get('/api/dashboard/stats', { params })
-    return data
+    
+    // Map backend response to match AnalyticsOverview expected by Analytics.vue
+    return {
+      success: data.success,
+      data: {
+        total_messages: data.messages?.total || 0,
+        messages_today: data.messages?.today || 0,
+        avg_response_time_ms: data.performance?.avg_response_time_ms || 0,
+        total_tokens: data.tokens?.total_used || 0
+      }
+    } as any
   },
 
   async getMessagesChart(params: AnalyticsParams = {}): Promise<MessagesChartResponse> {
