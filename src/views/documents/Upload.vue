@@ -2,8 +2,10 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDocumentStore } from '@/stores/documents'
+import { useAuthStore } from '@/stores/auth'
 import { toast } from 'vue-sonner'
 import { ArrowLeft, X, FileText, CheckCircle, AlertCircle } from 'lucide-vue-next'
+import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Input } from '@/components/ui/input'
@@ -19,19 +21,26 @@ import api from '@/services/api'
 
 const router = useRouter()
 const documentStore = useDocumentStore()
+const authStore = useAuthStore()
+
+const user = computed(() => authStore.user)
+const isSuperAdmin = computed(() => !user.value?.division_id)
 
 interface FileWithMetadata {
   file: File
   title: string
   categoryId: number | null
+  divisionId: number | null
 }
 
 const selectedFiles = ref<FileWithMetadata[]>([])
 const categories = ref<any[]>([])
 const loadingCategories = ref(false)
+const divisions = ref<any[]>([])
+const loadingDivisions = ref(false)
 
 onMounted(async () => {
-  await loadCategories()
+  await Promise.all([loadCategories(), loadDivisions()])
 })
 
 const loadCategories = async () => {
@@ -46,11 +55,24 @@ const loadCategories = async () => {
   }
 }
 
+const loadDivisions = async () => {
+  loadingDivisions.value = true
+  try {
+    const { data } = await api.get('/api/documents/divisions')
+    divisions.value = data
+  } catch (error) {
+    console.error('Failed to load divisions:', error)
+  } finally {
+    loadingDivisions.value = false
+  }
+}
+
 const handleFilesSelected = (files: File[]) => {
   const filesWithMetadata = files.map(file => ({
     file,
     title: file.name.replace(/\.[^/.]+$/, ''), // Remove extension for default title
-    categoryId: null // Default to no category
+    categoryId: null, // Default to no category
+    divisionId: null // Default to no division
   }))
   selectedFiles.value = [...selectedFiles.value, ...filesWithMetadata]
 }
@@ -79,6 +101,7 @@ const handleUpload = async () => {
       const params = new URLSearchParams()
       if (fileData.title) params.append('title', fileData.title)
       if (fileData.categoryId) params.append('category_id', String(fileData.categoryId))
+      if (fileData.divisionId) params.append('division_id', String(fileData.divisionId))
       params.append('content_type', 'document')
       
       try {
@@ -150,6 +173,10 @@ const updateFileTitle = (index: number, title: string) => {
 
 const updateFileCategory = (index: number, categoryId: string) => {
   selectedFiles.value[index].categoryId = (categoryId && categoryId !== 'none') ? parseInt(categoryId) : null
+}
+
+const updateFileDivision = (index: number, divisionId: string) => {
+  selectedFiles.value[index].divisionId = (divisionId && divisionId !== 'none') ? parseInt(divisionId) : null
 }
 </script>
 
@@ -240,6 +267,31 @@ const updateFileCategory = (index: number, categoryId: string) => {
                       :value="String(category.id)"
                     >
                       {{ category.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <!-- Division Selection -->
+              <div v-if="!documentStore.uploading && divisions.length > 0 && isSuperAdmin">
+                <label class="text-sm font-medium text-gray-700 mb-1 block">
+                  Division
+                </label>
+                <Select 
+                  :model-value="fileData.divisionId ? String(fileData.divisionId) : 'none'"
+                  @update:model-value="(val: any) => updateFileDivision(index, val)"
+                >
+                  <SelectTrigger class="w-full">
+                    <SelectValue placeholder="Select division (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">General / No Division</SelectItem>
+                    <SelectItem 
+                      v-for="division in divisions" 
+                      :key="division.id" 
+                      :value="String(division.id)"
+                    >
+                      {{ division.name }}
                     </SelectItem>
                   </SelectContent>
                 </Select>
