@@ -26,8 +26,13 @@ const isContextExpanded = (messageId: string) => {
   return expandedContexts.value.has(messageId)
 }
 
-const formatTime = (timestamp: string) => {
-  return format(new Date(timestamp), 'HH:mm')
+const formatTime = (dateString: string) => {
+  if (!dateString) return ''
+  try {
+    return format(new Date(dateString), 'HH:mm')
+  } catch (e) {
+    return ''
+  }
 }
 </script>
 
@@ -65,7 +70,7 @@ const formatTime = (timestamp: string) => {
                 message.role === 'user' ? 'text-gray-500' : 'text-white/80'
               ]"
             >
-              {{ formatTime(message.timestamp) }}
+              {{ formatTime(message.created_at) }}
             </span>
           </div>
           <p class="text-sm whitespace-pre-wrap">{{ message.content }}</p>
