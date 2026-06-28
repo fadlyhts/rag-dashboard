@@ -16,6 +16,8 @@ export const useDocumentStore = defineStore('documents', () => {
   async function fetchDocuments(params?: { 
     search?: string
     status?: string
+    category?: number
+    division?: number
     page?: number
     limit?: number
   }) {
