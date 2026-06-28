@@ -46,24 +46,24 @@ export const useSystemStore = defineStore('system', () => {
       
       // Transform backend response to match expected format
       status.value = {
-        success: statusData.success || true,
-        qdrant: statusData.qdrant || statusData.vector_db || {
-          status: statusData.status || 'unknown',
-          collection: 'documents',
-          vectors: statusData.total_vectors || 0,
-          points: statusData.total_points || 0,
-          url: statusData.qdrant_url || ''
+        success: statusData.overall === 'healthy' || statusData.overall === 'degraded',
+        qdrant: {
+          status: statusData.components?.qdrant?.status || 'unknown',
+          collection: analyticsData.vector_database?.collection || 'documents',
+          vectors: analyticsData.vector_database?.vectors_count || 0,
+          points: analyticsData.vector_database?.vectors_count || 0,
+          url: ''
         },
-        timestamp: statusData.timestamp || new Date().toISOString()
+        timestamp: new Date().toISOString()
       }
       
       analytics.value = {
         success: analyticsData.success || true,
-        total_messages: analyticsData.total_messages || 0,
-        avg_response_time_ms: analyticsData.avg_response_time_ms || 0,
-        total_tokens: analyticsData.total_tokens || 0,
-        recent_messages_7d: analyticsData.recent_messages_7d || 0,
-        today_messages: analyticsData.today_messages || 0
+        total_messages: analyticsData.messages?.total || 0,
+        avg_response_time_ms: analyticsData.performance?.avg_response_time_ms || 0,
+        total_tokens: analyticsData.tokens?.total_used || 0,
+        recent_messages_7d: analyticsData.messages?.this_week || 0,
+        today_messages: analyticsData.messages?.today || 0
       }
     } catch (e: any) {
       error.value = e.message || 'Failed to fetch system data'

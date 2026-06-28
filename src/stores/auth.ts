@@ -6,12 +6,15 @@ interface User {
   id: string
   username: string
   email?: string
+  role?: string
+  division_id?: number | null
 }
 
 interface LoginResponse {
   access_token: string
   token_type: string
-  user?: User
+  user_info?: User
+  role?: string
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -21,7 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!token.value)
   
   const login = async (username: string, password: string): Promise<void> => {
-    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+    const baseURL = import.meta.env.VITE_API_URL || ''
     
     const { data } = await axios.post<LoginResponse>(
       `${baseURL}/api/auth/login`,
@@ -40,8 +43,9 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = data.access_token
     localStorage.setItem('auth_token', data.access_token)
     
-    if (data.user) {
-      user.value = data.user
+    if (data.user_info) {
+      user.value = data.user_info
+      localStorage.setItem('auth_user', JSON.stringify(data.user_info))
     }
   }
   
@@ -49,12 +53,21 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     user.value = null
     localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
   }
   
   const checkAuth = () => {
     const storedToken = localStorage.getItem('auth_token')
+    const storedUser = localStorage.getItem('auth_user')
     if (storedToken) {
       token.value = storedToken
+      if (storedUser) {
+        try {
+          user.value = JSON.parse(storedUser)
+        } catch (e) {
+          user.value = null
+        }
+      }
     } else {
       token.value = null
       user.value = null
