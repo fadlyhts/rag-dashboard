@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { Menu, Search, User, LogOut, Settings, ChevronRight } from 'lucide-vue-next'
+import { Menu, Search, User, LogOut, Settings, ChevronRight, MessageSquare } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -80,6 +80,14 @@ const handleLogout = () => {
       
       <!-- Right Side -->
       <div class="flex items-center gap-3">
+        <!-- WhatsApp Chatbot Button -->
+        <a href="https://wa.me/6281802813500" target="_blank" rel="noopener noreferrer">
+          <Button variant="outline" class="flex items-center gap-2 text-[#25D366] border-[#25D366] hover:bg-[#25D366]/10">
+            <MessageSquare class="w-4 h-4" />
+            <span class="hidden md:inline-block">Chat WhatsApp</span>
+          </Button>
+        </a>
+
         <!-- User Dropdown -->
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
