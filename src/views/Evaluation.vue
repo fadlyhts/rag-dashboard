@@ -33,6 +33,7 @@ const selectedDataset = ref<string>('')
 const selectedMetrics = ref<string[]>(['bertscore', 'bleu', 'rouge', 'ragas'])
 const ragasUseGroundTruth = ref(true)
 const quickTest = ref(false) // limit to 3 questions
+const lexicalNorm = ref<'none' | 'basic' | 'strong'>('basic')
 
 // Retrieval scope (mirrors production per-division access control)
 const divisions = ref<RefItem[]>([])
@@ -145,6 +146,7 @@ const startRun = async () => {
       limit: quickTest.value ? 3 : null,
       division_id: selectedDivision.value,
       category_id: selectedCategory.value,
+      lexical_normalization: lexicalNorm.value,
     })
     activeRun.value = run
     toast.success('Evaluasi dimulai...')
@@ -307,6 +309,22 @@ const AGG_METRICS: { key: keyof EvaluationRun; label: string }[] = [
               {{ m.label }}
             </button>
           </div>
+        </div>
+
+        <!-- Lexical normalization (BLEU/ROUGE only) -->
+        <div>
+          <label class="text-sm font-medium text-gray-700 mb-1.5 block">Normalisasi teks (khusus BLEU/ROUGE)</label>
+          <select
+            v-model="lexicalNorm"
+            class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#25D366]"
+          >
+            <option value="none">Tanpa normalisasi (teks apa adanya)</option>
+            <option value="basic">Basic — buang sitasi [1], emoji, lowercase</option>
+            <option value="strong">Strong — + buang sapaan/penutup ("Halo", "Semoga membantu")</option>
+          </select>
+          <p class="text-xs text-gray-400 mt-1.5">
+            Hanya memengaruhi BLEU &amp; ROUGE-L (diterapkan ke jawaban &amp; ground truth). BERTScore &amp; RAGAS tetap memakai teks asli.
+          </p>
         </div>
 
         <!-- Retrieval scope (division / category) -->

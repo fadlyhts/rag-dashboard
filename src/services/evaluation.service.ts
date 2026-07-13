@@ -58,6 +58,7 @@ export interface CreateRunPayload {
   limit?: number | null
   division_id?: number | null
   category_id?: number | null
+  lexical_normalization?: string
 }
 
 export interface RefItem {
