@@ -55,6 +55,7 @@ const divisionFilter = ref('all')
 const deleteDialogOpen = ref(false)
 const documentToDelete = ref<number | null>(null)
 const deleting = ref(false)
+const limitFilter = ref('20')
 
 const loadDocuments = async () => {
   try {
@@ -62,7 +63,8 @@ const loadDocuments = async () => {
       search: searchQuery.value || undefined,
       status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
       category: categoryFilter.value !== 'all' ? Number(categoryFilter.value) : undefined,
-      division: divisionFilter.value !== 'all' ? Number(divisionFilter.value) : undefined
+      division: divisionFilter.value !== 'all' ? Number(divisionFilter.value) : undefined,
+      limit: limitFilter.value === 'all' ? 1000 : Number(limitFilter.value)
     })
   } catch (error) {
     toast.error('Failed to load documents')
@@ -77,6 +79,7 @@ const handleFilterChange = (filter: string, value: string) => {
   if (filter === 'status') statusFilter.value = value
   if (filter === 'category') categoryFilter.value = value
   if (filter === 'division') divisionFilter.value = value
+  if (filter === 'limit') limitFilter.value = value
   loadDocuments()
 }
 
@@ -302,6 +305,20 @@ onMounted(() => {
           <SelectItem v-for="cat in categories" :key="cat.id" :value="cat.id.toString()">
             {{ cat.name }}
           </SelectItem>
+        </SelectContent>
+      </Select>
+      
+      <Select :model-value="limitFilter" @update:model-value="(val: any) => handleFilterChange('limit', val)">
+        <SelectTrigger class="w-[140px]">
+          <Filter class="w-4 h-4 mr-2" />
+          <SelectValue placeholder="Items per page" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="10">10 items</SelectItem>
+          <SelectItem value="20">20 items</SelectItem>
+          <SelectItem value="50">50 items</SelectItem>
+          <SelectItem value="100">100 items</SelectItem>
+          <SelectItem value="all">All items</SelectItem>
         </SelectContent>
       </Select>
       
