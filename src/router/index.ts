@@ -83,6 +83,12 @@ const router = createRouter({
           meta: { title: 'RAG Config' }
         },
         {
+          path: 'evaluation',
+          name: 'evaluation',
+          component: () => import('@/views/Evaluation.vue'),
+          meta: { title: 'Evaluasi' }
+        },
+        {
           path: 'settings',
           name: 'settings',
           component: () => import('@/views/Settings.vue'),
