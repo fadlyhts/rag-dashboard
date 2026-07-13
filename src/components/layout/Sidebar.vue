@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, useRoute } from 'vue-router'
-import { Home, FileText, MessageSquare, Users, Database, Settings, BarChart, Wrench, ShieldCheck } from 'lucide-vue-next'
+import { Home, FileText, MessageSquare, Users, Database, Settings, BarChart, Wrench, ShieldCheck, ClipboardCheck } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { computed } from 'vue'
 
@@ -16,6 +16,7 @@ const navigationItems = [
   { name: 'Staff Management', path: '/admins', icon: ShieldCheck, requiresSuperAdmin: true },
   { name: 'Vector DB', path: '/vector-db', icon: Database },
   { name: 'RAG Config', path: '/rag-config', icon: Wrench },
+  { name: 'Evaluasi', path: '/evaluation', icon: ClipboardCheck },
   { name: 'Analytics', path: '/analytics', icon: BarChart },
   { name: 'Settings', path: '/settings', icon: Settings }
 ]
